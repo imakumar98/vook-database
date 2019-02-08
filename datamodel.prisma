@@ -1,0 +1,55 @@
+enum Permission {
+  ADMIN
+  USER 
+  BOOKCREATE
+  BOOKUPDATE
+  BOOKDELETE
+  PERMISSIONUPDATE
+}
+
+
+
+type User {
+  id: ID! @unique
+  name: String!
+  email: String! @unique
+  number: String
+  walletBalance: Int
+  password: String!
+  resetToken: String
+  resetTokenExpiry: Float
+  permissions: [Permission]
+}
+
+
+
+type Product {
+  id: ID! @unique
+  title: String!
+  author: String!
+  publisher: String!
+  className: String!
+  subject: String!
+  category: String!
+  edition: String!
+  quantity: Int!
+  detail: String!
+  description: String
+  mrp: Int!
+  discount: Int!
+  tags: [Tag!]! @relation(name: "ProductTags")
+  
+
+}
+
+type Tag {
+  id: ID! @unique
+  text: String
+
+}
+
+
+
+
+
+

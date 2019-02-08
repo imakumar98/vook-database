@@ -1,0 +1,12 @@
+endpoint: https://eu1.prisma.sh/ashwani-0b91c9/learning-prisma/dev
+datamodel: datamodel.prisma
+
+generate:
+  - generator: javascript-client
+    output: ./src/generated/prisma-client/
+
+hooks:
+  post-deploy:
+    - echo "Deployment finished"
+    - graphql get-schema --project database
+    - graphql prepare
