@@ -13,36 +13,64 @@ type Mutation {
     signout: SuccessMessage
     requestReset(email: String!): SuccessMessage
     resetPassword(resetToken: String!, password: String!, confirmPassword: String!): User!
+
+    
     
 
     createProduct(
         title: String!,
         author: String!,
         publisher: String!,
-        className: String!,
-        subject: String!,
         category: String!,
+        subject: String!,
+        type: String!,
         edition: String!,
         quantity: Int!,
         detail: String!,
         description: String,
         mrp: Int!,
         discount: Int!,
-        tags: [String]
+        tags: TagCreateManyWithoutProductInput
+        images: ImageCreateManyWithoutProductInput
     ): Product!
+
+    createCategory(
+        name: String!,
+        description: String!,
+        image: String
+    ): Category!
+
+    addToCart(id:ID!,quantity: Int!,type: String!): CartProduct
+    removeFromCart(id:ID!): CartProduct
+    createOrder(
+        email: String
+        number: String
+        streetAddress: String
+        city: String
+        state: String
+        postalCode: String
+        couponCode: String
+        isVookBalanceUsed: Boolean
+        addressSetToDefault: Boolean
+
+    ): Order!
+
+    #Postal Code
+    createPostalCode(code:String!): PostalCode!
+
+    submitContactUs(firstName: String, lastName: String, email: String, number: String, message: String): SuccessMessage!
+
    
 }
 
 type Query {
+    getBooksByCategory(where: ProductWhereInput): [Product]!
+    product(where: ProductWhereUniqueInput!): Product!
+    order(where: OrderWhereUniqueInput!): Order!
     
-
+    getMyOrders:[Order!]!
+    getAllBooks: [Product]!
     me: User
 }
 
-type User {
-    id: ID!
-    name: String!
-    email: String!
-    permissions: [Permission!]!
-}
 

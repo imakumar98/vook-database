@@ -14,42 +14,116 @@ type User {
   name: String!
   email: String! @unique
   number: String
-  walletBalance: Int
+  walletBalance: Int @default(value:0)
   password: String!
   resetToken: String
   resetTokenExpiry: Float
   permissions: [Permission]
+  cart: [CartProduct!]!
+  streetAddress: String
+  city: String
+  state: String
+  postalCode: String
+
+
+
+}
+
+type Category {
+  id: ID! @unique
+  name: String! @unique
+  description: String!
+  image: String
 }
 
 
 
 type Product {
   id: ID! @unique
+  sku: Int
   title: String!
   author: String!
   publisher: String!
-  className: String!
-  subject: String!
   category: String!
+  subject: String!
+  type: String!
   edition: String!
   quantity: Int!
   detail: String!
   description: String
-  mrp: Int!
+  mrp: Float
   discount: Int!
-  tags: [Tag!]! @relation(name: "ProductTags")
-  
+  tags: [Tag!]! @relation(name: "ProductTags", cascadeDelete: true)
+  images: [Image!]! @relation(name: "ProductImages", cascadeDelete: true)
+  slug: String! @unique
+}
 
+type ProductCategory {
+  id: ID! @unique
+  name: String!
+
+}
+
+type ProductType {
+  id: ID! @unique
+  name: String!
+}
+
+type Image {
+  id: ID! @unique
+  src: String!
+  product: Product! @relation(name: "ProductImages", cascadeDelete: false)
 }
 
 type Tag {
   id: ID! @unique
-  text: String
+  text: String!
+  product: Product! @relation(name: "ProductTags", cascadeDelete: false)
+}
+
+type CartProduct {
+  id: ID! @unique
+  quantity: Int! @default(value:1)
+  product: Product! #relationship to Product
+  user: User! #relationship to User
+}
+
+type OrderProduct {
+  id: ID! @unique
+  title: String!
+  author: String!
+  publisher: String!
+  image: String!
+  price: Float
+  quantity: Int! @default(value:1)
+  user: User
+}
+
+type Order {
+  id: ID! @unique
+  isVookBalanceUsed: Boolean
+  addressSetToDefault: Boolean
+  couponCode: String
+  streetAddress: String
+  phone: String
+  email: String
+  city: String
+  state: String
+  postalCode: String
+  orderId: Int!
+  products: [OrderProduct!]!
+  subTotal: Float
+  total: Float
+  status: String!
+  user: User!
+  orderDateTime: DateTime
 
 }
 
+type PostalCode {
+  id: ID! @unique
+  code: String! @unique
 
-
-
+}
 
 

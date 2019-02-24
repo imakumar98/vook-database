@@ -3,43 +3,22 @@ const jwt = require('jsonwebtoken');
 const {randomBytes} = require('crypto');
 const  {promisify} = require('util');
 const axios = require('axios');
-
+const calcTotalPrice = require('./calcTotalPrice');
+const {getOrderProductObjectForMail} = require('./utilFunctions');
 
 const Mutation = {
 
     
-    // async createBook(parent,{title,author,publisher,className,subject,category,edition,quantity,detail,description,mrp,discount,tags,image1,image2,image3,image4,image5},ctx,info){
-    //     const book = await ctx.db.mutation.createBook({
-    //         data: {
-    //             // title,author,publisher,className,subject,category,edition,quantity,detail,description,mrp,discount,tags,image1,image2,image3,image4,image5
-    //             title,
-    //             // author,
-    //             // publisher,
-    //             // className,
-    //             // subject,
-    //             // category,
-    //             // edition,
-    //             // quantity,
-    //             // mrp,
-    //             // discount
-    //         }
-    //     },info);
-        
-        
-    //     return book;
-    // },
-
-    
 
     async createProduct(parent,args,ctx,info){
-        var product = ctx.db.mutation.createProduct({
+        var product = await ctx.db.mutation.createProduct({
             data: {
                 title: args.title,
                 author: args.author,
                 publisher: args.publisher,
-                className: args.className,
-                subject: args.subject,
                 category: args.category,
+                subject: args.subject,
+                type: args.type,
                 edition: args.edition,
                 quantity: args.quantity,
                 detail: args.detail,
@@ -47,11 +26,23 @@ const Mutation = {
                 mrp: args.mrp,
                 discount: args.discount,
                 tags: args.tags,
-                //images: args.images
+                images: args.images
             }
         },info);
 
         return product;
+    },
+
+    async createCategory(parent,args,ctx,info){
+        var category = await ctx.db.mutation.createCategory({
+            data: {
+                name: args.name,
+                description: args.description,
+                image: args.image
+            }
+        },info);
+
+        return category;
     },
 
     
@@ -190,6 +181,314 @@ const Mutation = {
         //8. Return the new user
         return updatedUser;
         
+    },
+
+    async addToCart(parent,args,ctx,info){
+        //1. Make sure they are signed In
+        const {userId} = ctx.request; 
+        if(!userId){
+            throw new Error("You must be signed in soon");
+        }
+        //2. Query the users current cart
+        const [existingCartProduct] = await ctx.db.query.cartProducts({
+            where: {
+                user: {id: userId},
+                product: {id: args.id}
+            }
+        });
+        //3. Check if that product is already in their cart and increment by 1 if it is according to type
+        if(existingCartProduct){
+            if(args.type=='IncrementByOne'){
+                return ctx.db.mutation.updateCartProduct({
+                    where: {id: existingCartProduct.id},
+                    data: {quantity: existingCartProduct.quantity + 1},
+                },info)
+            }else if(args.type=='UpdateQuantity'){
+                
+                return ctx.db.mutation.updateCartProduct({
+                    where: {id: existingCartProduct.id},
+                    data: {quantity: parseInt(args.quantity)},
+                },info)
+            }
+            
+            
+        }
+        
+        //4. If its not, create a fresh CartProduct for that user
+        return ctx.db.mutation.createCartProduct({
+            data: {
+                user: {
+                    connect: {id: userId},  
+                },
+                product: {
+                    connect: {
+                        id: args.id
+                    }
+                },
+                quantity: args.quantity
+            }
+        },info)
+    },
+
+    async removeFromCart(parent,args,ctx,info){
+        //1. Find the cart product
+        
+        const cartProduct = await ctx.db.query.cartProduct({
+            where: {
+                id: args.id
+            },
+        },
+            `{id, user{ id }}`
+        );
+        // //1.5 Make sure we found an product
+        if(!cartProduct){
+            throw new Error("No Book Found!");
+        }
+        //2. Make sure they own that cart product
+        if(cartProduct.user.id !==ctx.request.userId){
+            throw new Error('Cheatin huhh');
+        }
+        //3. Delete that cart product
+        return ctx.db.mutation.deleteCartProduct({
+            where: {id: args.id},
+        },info);
+    },
+
+    async createOrder(parent,args,ctx,info){
+        //1. Query the current user and make sure they are signed in
+        const {userId} = ctx.request;
+        if(!userId) throw new Error("You must be signed in to complete this order.");
+        const user = await ctx.db.query.user({where: {id: userId}},
+            `{
+                id 
+                name 
+                email 
+                walletBalance
+                cart {
+                    id 
+                    quantity 
+                    product {
+                        id
+                        title
+                        author
+                        publisher
+                        mrp 
+                        discount
+                        images {
+                            src
+                        }
+                    }
+                }
+            }`
+        );
+
+        
+        //2. Check for all required field provided(Validation)
+        if(!args.number){
+            throw new Error("Phone number field is required!! ");
+        }
+        if(args.number.length!==10){
+            throw new Error("Phone number must be 10-digit value!!");
+        }
+        if(!args.streetAddress){
+            throw new Error("Street Address field is required!!");
+        }
+        if(!args.city){
+            throw new Error("City field is required!!");
+        }
+        if(!args.state){
+            throw new Error("State field is required!!");
+        }
+        if(!args.postalCode){
+            throw new Error("Postal Code/Zip field is required!!");
+        }
+        
+        //3. Update User Address and Email if User Selected Set It Default
+        if(args.addressSetToDefault==true){
+            const res = await ctx.db.mutation.updateUser({
+                where: {id: userId},
+                data: {
+                    number: args.number,
+                    streetAddress: args.streetAddress,
+                    city: args.city,
+                    state: args.state,
+                    postalCode: String(args.postalCode)
+                }
+            });
+            if(!res) throw new Error("Unable to save User data");
+        }
+
+        //4. Validate Postal Code
+        const postalCode = await ctx.db.query.postalCode({where: {code: String(args.postalCode)}});
+        if(!postalCode) throw new Error(`Sorry!! But Vook Services Are Not Available At ${args.postalCode}`);
+        
+
+        
+        //5. Recalculate the total price for assurance
+        const subTotal = calcTotalPrice(user.cart);
+        var total = subTotal;
+        
+        if(args.isVookBalanceUsed){
+            total = subTotal - user.walletBalance
+        }
+        if(args.couponCode){
+            //SOLVE FOR COUPON CODE
+            var couponCode = args.couponCode;
+        }
+
+        //6. Convert the cartProducts to orderProducts
+        const orderItems = user.cart.map(cartItem=>{
+            const orderItem = {
+                title: cartItem.product.title,
+                author: cartItem.product.author,
+                publisher: cartItem.product.publisher,
+                price: Math.round(cartItem.product.mrp - (cartItem.product.mrp * (cartItem.product.discount/100))),
+                image: cartItem.product.images[0].src,
+                quantity: cartItem.quantity,
+                user: { connect: {id: userId} }
+            }
+            delete orderItem.id;
+            return orderItem;
+        })
+
+        //7. Create the order
+
+        //7.1 Create Readable Order ID
+        var lastOrder = await ctx.db.query.orders({last:1});
+        if(lastOrder.length==0){
+            var orderId = 2019500;
+        }else{
+            var lastOrderId = lastOrder[0].orderId;
+            var orderId = lastOrderId + 1;
+        }
+        
+        //7.2 Save the Order in Database
+        const order = await ctx.db.mutation.createOrder({
+            data: {
+                isVookBalanceUsed:  args.isVookBalanceUsed,
+                couponCode: args.couponCode,
+                streetAddress: args.streetAddress,
+                phone: args.number,
+                email: args.email,
+                city: args.city,
+                state: args.state,
+                postalCode: args.postalCode,
+                subTotal: subTotal,
+                total: total,
+                status: 'PROCESSING',
+                products: {create: orderItems},
+                user: {connect: {id:userId}},
+               orderId: orderId
+            }
+        },info)
+
+
+        //8. Clean up - Clear the User Cart, Delete Cart Products
+        const cartProductIds = user.cart.map(cartItem=>cartItem.id);
+        await ctx.db.mutation.deleteManyCartProducts({where: {
+            id_in: cartProductIds
+        }})
+
+        //9. Create Order Invoice
+
+
+
+
+        //10. Send Email/SMS for successfull order creation With Order Invoice as attachment(TO CUSTOMER)
+
+        //10.1 Send Mail Confirmation
+        console.log("Confirmation mail sent");
+
+        //10.2 Send SMS Confirmation
+        console.log("SMS for Order Confirmation Sent");
+        
+        
+
+        //11 Send Email for order generation(TO ME)
+        const object = getOrderProductObjectForMail(order.products);
+        const response = await axios({
+            method: 'post',
+            url: process.env.ELASTIC_EMAIL_API_URL,
+            responseType: 'json',
+            params: {
+                ...object,
+                apikey: process.env.ELASTIC_EMAIL_API_KEY,        
+                to: process.env.ADMIN_EMAIL,
+                isTransactional: true,
+                merge_customerName: user.name,
+                template: 18667,
+                merge_address1: 'RC- Prasant Garden Khora Colony',
+                merge_address2: 'Noida,201301, Uttar Pradesh',
+                merge_subTotal: order.subTotal,
+                merge_total: order.total
+            }
+        })
+
+        console.log(response.data);
+        
+
+        //12. Return the Order to the client
+        return order;
+    },
+
+    async submitContactUs(parent,args,ctx,info){
+        if(!args.firstName){
+            throw new Error("First Name field is Required!!");
+        }
+        if(!args.lastName){
+            throw new Error("Last Name field is Required!!");
+        }
+        if(!args.email){
+            throw new Error("Email field is Required!!");
+        }
+        if(!args.number){
+            throw new Error("Contact number field is Required!!");
+        }
+        if(!args.message){
+            throw new Error("Message field is Required!!");
+        }
+
+        //Email information to admin
+        const response = await axios({
+            method: 'post',
+            url: process.env.ELASTIC_EMAIL_API_URL,
+            responseType: 'json',
+            params: {
+                apikey: process.env.ELASTIC_EMAIL_API_KEY,        
+                to: process.env.ADMIN_EMAIL,
+                isTransactional: true,
+                template: 18710,
+                merge_adminName: process.env.ADMIN_NAME,
+                merge_firstName: args.firstName,
+                merge_lastName: args.lastName,
+                merge_email: args.email,
+                merge_number: args.number,
+                merge_message: args.message
+            }
+        })
+        if(!response.data.success){
+            throw new Error("Something went wrong");
+        }
+        return {message : 'Your query has been submitted successfully!! We will contact you very soon.'};
+    },
+
+    async createPostalCode(parent,args,ctx,info){
+        const code = await ctx.db.query.postalCodes({
+            where: {
+                code: args.code
+            }
+        });
+
+        if(code.length>0){
+            throw new Error(args.code + " already exist");
+        }
+
+        return ctx.db.mutation.createPostalCode({
+            data: {
+                code: args.code
+            }
+        },info);
+
     }
 }
 
