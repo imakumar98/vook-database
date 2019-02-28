@@ -2,8 +2,30 @@ const {forwardTo} = require('prisma-binding');
 
 const Query = {
     async getAllBooks(parent,args,ctx,info){
-        var books = await ctx.db.query.products();
-        return books;
+        return await ctx.db.query.products({
+            where : {active:true}
+        },`{
+            id
+            title
+            author
+            publisher {
+                name
+                discount
+            }
+            category{
+                name
+            }
+            type {
+                name
+            }
+            images {
+                src
+            }
+            mrp
+           
+            sku
+        }`);
+        
     },
 
     product: forwardTo('db'),
@@ -54,6 +76,18 @@ const Query = {
         },info);
         console.log(orders);
         return orders;
+    },
+
+    async getCategories(parent,args,ctx,info){
+        return await ctx.db.query.productCategories();
+    },
+
+    async getTypes(parent,args,ctx,info){
+        return await ctx.db.query.productTypes();
+    },
+
+    async getPublishers(parent,args,ctx,info){
+        return await ctx.db.query.publishers();
     }
 
 }

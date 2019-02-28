@@ -29,13 +29,6 @@ type User {
 
 }
 
-type Category {
-  id: ID! @unique
-  name: String! @unique
-  description: String!
-  image: String
-}
-
 
 
 type Product {
@@ -43,42 +36,59 @@ type Product {
   sku: Int
   title: String!
   author: String!
-  publisher: String!
-  category: String!
+  publisher: Publisher! @relation(name: "ProductPublisher")
+  category: ProductCategory! @relation(name: "ProductCategory")
   subject: String!
-  type: String!
-  edition: String!
+  type: ProductType! @relation(name: "ProductType")
+  edition: Int!
+  active: Boolean
   quantity: Int!
   detail: String!
   description: String
-  mrp: Float
-  discount: Int!
-  tags: [Tag!]! @relation(name: "ProductTags", cascadeDelete: true)
-  images: [Image!]! @relation(name: "ProductImages", cascadeDelete: true)
+  mrp: Float!
+  tags: [Tag!]! @relation(name: "ProductTags")
+  images: [Image!]! @relation(name: "ProductImages")
   slug: String! @unique
+
 }
 
 type ProductCategory {
   id: ID! @unique
-  name: String!
+  name: String! @unique
+  products: [Product!]! @relation(name: "ProductCategory")
+  types: [ProductType!]! @relation(name: "CategoryType")
+  image : String
+  description : String
 
 }
 
 type ProductType {
   id: ID! @unique
-  name: String!
+  name: String! @unique
+  products: [Product!]! @relation(name: "ProductType")
+  category: ProductCategory! @relation(name:"CategoryType")
+  publishers: [Publisher!]! @relation(name: "TypePublisher")
+}
+
+
+type Publisher {
+  id: ID! @unique
+  name: String! @unique
+  discount: Int!
+  products: [Product!]! @relation(name: "ProductPublisher")
+  type: ProductType! @relation(name: "TypePublisher")
 }
 
 type Image {
   id: ID! @unique
   src: String!
-  product: Product! @relation(name: "ProductImages", cascadeDelete: false)
+  product: Product! @relation(name: "ProductImages")
 }
 
 type Tag {
   id: ID! @unique
   text: String!
-  product: Product! @relation(name: "ProductTags", cascadeDelete: false)
+  product: Product! @relation(name: "ProductTags")
 }
 
 type CartProduct {

@@ -11,39 +11,43 @@ const Mutation = {
     
 
     async createProduct(parent,args,ctx,info){
+        console.log(args);
+        const publisher = await ctx.db.query.publisher({
+            where: {name: args.publisher}
+        });
+        console.log(publisher);
+
+        const type = await ctx.db.query.productType({
+            where: {name: args.type}
+        });
+        console.log(type);
+        const category = await ctx.db.query.productCategory({
+            where: {name: args.category}
+        });
+        console.log(category);
         var product = await ctx.db.mutation.createProduct({
             data: {
                 title: args.title,
                 author: args.author,
-                publisher: args.publisher,
-                category: args.category,
+                // publisher: {connect: {id: publisher.id}},
+                // category: {connect: {id: category.id}},
                 subject: args.subject,
-                type: args.type,
+                // type: {connect: {id: type.id}},
                 edition: args.edition,
                 quantity: args.quantity,
                 detail: args.detail,
                 description: args.description,
                 mrp: args.mrp,
-                discount: args.discount,
-                tags: args.tags,
-                images: args.images
+                
+                slug: args.slug
+                
             }
-        },info);
-
+        });
+        console.log(product);
         return product;
     },
 
-    async createCategory(parent,args,ctx,info){
-        var category = await ctx.db.mutation.createCategory({
-            data: {
-                name: args.name,
-                description: args.description,
-                image: args.image
-            }
-        },info);
-
-        return category;
-    },
+    
 
     
 
@@ -489,6 +493,68 @@ const Mutation = {
             }
         },info);
 
+    },
+
+    //CREATE CATEGORY MUTATION
+    async createCategory(parent,args,ctx,info){
+        const name = await ctx.db.query.productCategory({
+            where: {name: args.name.toLowerCase()}
+        });
+        if(name){
+            throw new Error("This category already exist!!");
+        }
+        const res = await ctx.db.mutation.createProductCategory({
+            data: {
+                name : args.name.toLowerCase()
+            }
+        });
+        if(!res) throw new Error("Something Went Wrong");
+        return {message: "Category Created Successfully!!"}
+    },
+
+    //CREATE TYPE MUTATION
+    async createType(parent,args,ctx,info){
+        const name = await ctx.db.query.productType({
+            where: {name: args.name.toLowerCase()}
+        });
+        if(name){
+            throw new Error("This category already exist!!");
+        }
+        const category = await ctx.db.query.productCategory({
+            where : {name: args.category.toLowerCase()}
+        });
+        if(!category) throw new Error("You provide unknown category");
+        const res = await ctx.db.mutation.createProductType({
+            data: {
+                name : args.name.toLowerCase(),
+                category: {connect: {id: category.id}}
+            }
+        });
+        if(!res) throw new Error("Something Went Wrong");
+        return {message: "Type" + args.name +  "Created Successfully!!"}
+    },
+
+    //CREATE PUBLISHER MUTATION
+    async createPublisher(parent,args,ctx,info){
+        const name = await ctx.db.query.publisher({
+            where: {name: args.name.toLowerCase()}
+        },info);
+        if(name){
+            throw new Error("This publisher already exist!!");
+        }
+        const type = await ctx.db.query.productType({
+            where : {name: args.type.toLowerCase()}
+        });
+        if(!type) throw new Error("You provide unknown type");
+        const res = await ctx.db.mutation.createPublisher({
+            data: {
+                name : args.name.toLowerCase(),
+                type : {connect: {id: type.id}},
+                discount: args.discount
+            }
+        });
+        if(!res) throw new Error("Something Went Wrong");
+        return {message: "Publisher " + args.name +  " Created Successfully!!"}
     }
 }
 

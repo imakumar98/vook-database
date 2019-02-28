@@ -24,21 +24,16 @@ type Mutation {
         category: String!,
         subject: String!,
         type: String!,
-        edition: String!,
+        edition: Int!,
         quantity: Int!,
         detail: String!,
         description: String,
         mrp: Int!,
-        discount: Int!,
-        tags: TagCreateManyWithoutProductInput
-        images: ImageCreateManyWithoutProductInput
+        tags: [String!],
+        images: [String!],
+        slug: String!
     ): Product!
 
-    createCategory(
-        name: String!,
-        description: String!,
-        image: String
-    ): Category!
 
     addToCart(id:ID!,quantity: Int!,type: String!): CartProduct
     removeFromCart(id:ID!): CartProduct
@@ -60,6 +55,15 @@ type Mutation {
 
     submitContactUs(firstName: String, lastName: String, email: String, number: String, message: String): SuccessMessage!
 
+    #Products
+    createCategory(name: String!): SuccessMessage!
+
+    createType(name: String!,category:String!): SuccessMessage!
+
+    createPublisher(name:String!, type: String!, discount: Int!): SuccessMessage!
+
+    
+
    
 }
 
@@ -67,10 +71,15 @@ type Query {
     getBooksByCategory(where: ProductWhereInput): [Product]!
     product(where: ProductWhereUniqueInput!): Product!
     order(where: OrderWhereUniqueInput!): Order!
-    
     getMyOrders:[Order!]!
-    getAllBooks: [Product]!
+    getAllBooks: [Product!]!
     me: User
+
+    getCategories: [ProductCategory!]!
+
+    getTypes: [ProductType!]!
+
+    getPublishers: [Publisher!]! 
 }
 
 
