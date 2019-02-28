@@ -7,8 +7,7 @@ enum Permission {
   PERMISSIONUPDATE
 }
 
-
-
+#USER DATAMODEL
 type User {
   id: ID! @unique
   name: String!
@@ -19,96 +18,87 @@ type User {
   resetToken: String
   resetTokenExpiry: Float
   permissions: [Permission]
-  cart: [CartProduct!]!
+  cart: [CartBook!]!
   streetAddress: String
   city: String
   state: String
   postalCode: String
-
-
-
 }
 
-
-
-type Product {
+#BOOK DATAMODEL
+type Book {
   id: ID! @unique
-  sku: Int
+  sku: Int!
   title: String!
   author: String!
-  publisher: Publisher! @relation(name: "ProductPublisher")
-  category: ProductCategory! @relation(name: "ProductCategory")
+  publisher: Publisher! @relation(name: "BookPublisher")
+  category: Category! @relation(name: "BookCategory")
+  type: Type! @relation(name: "BookType")
   subject: String!
-  type: ProductType! @relation(name: "ProductType")
   edition: Int!
-  active: Boolean
+  active: Boolean!
   quantity: Int!
+  mrp: Int!
   detail: String!
   description: String
-  mrp: Float!
-  tags: [Tag!]! @relation(name: "ProductTags")
-  images: [Image!]! @relation(name: "ProductImages")
+  tags: [Tag!]! @relation(name: "BookTags")
+  images: [Image!]! @relation(name: "BookImages")
   slug: String! @unique
+  dateTime: DateTime
 
 }
 
-type ProductCategory {
+#BOOK CATEGORY DATAMODEL
+type Category {
   id: ID! @unique
   name: String! @unique
-  products: [Product!]! @relation(name: "ProductCategory")
-  types: [ProductType!]! @relation(name: "CategoryType")
+  books: [Book!]! @relation(name: "BookCategory")
+  types: [Type!]! @relation(name: "CategoryType")
   image : String
   description : String
-
 }
 
-type ProductType {
+#BOOK TYPE DATAMODEL
+type Type {
   id: ID! @unique
   name: String! @unique
-  products: [Product!]! @relation(name: "ProductType")
-  category: ProductCategory! @relation(name:"CategoryType")
+  books: [Book!]! @relation(name: "BookType")
+  category: Category! @relation(name:"CategoryType")
   publishers: [Publisher!]! @relation(name: "TypePublisher")
 }
 
-
+#BOOK PUBLISHER DATAMODEL
 type Publisher {
   id: ID! @unique
   name: String! @unique
   discount: Int!
-  products: [Product!]! @relation(name: "ProductPublisher")
-  type: ProductType! @relation(name: "TypePublisher")
+  books: [Book!]! @relation(name: "BookPublisher")
+  type: Type! @relation(name: "TypePublisher")
 }
 
+#BOOK IMAGES DATAMODEL
 type Image {
   id: ID! @unique
   src: String!
-  product: Product! @relation(name: "ProductImages")
+  book: Book! @relation(name: "BookImages")
 }
 
+#BOOK TAGS DATAMODEL
 type Tag {
   id: ID! @unique
   text: String!
-  product: Product! @relation(name: "ProductTags")
+  book: Book! @relation(name: "BookTags")
 }
 
-type CartProduct {
+#CARTBOOK DATAMODEL : SINGLE CART BOOK
+type CartBook {
   id: ID! @unique
   quantity: Int! @default(value:1)
-  product: Product! #relationship to Product
-  user: User! #relationship to User
+  book: Book!
+  user: User!
 }
 
-type OrderProduct {
-  id: ID! @unique
-  title: String!
-  author: String!
-  publisher: String!
-  image: String!
-  price: Float
-  quantity: Int! @default(value:1)
-  user: User
-}
-
+#ORDER DATAMODEL
 type Order {
   id: ID! @unique
   isVookBalanceUsed: Boolean
@@ -121,19 +111,30 @@ type Order {
   state: String
   postalCode: String
   orderId: Int!
-  products: [OrderProduct!]!
+  books: [OrderBook!]!
   subTotal: Float
   total: Float
   status: String!
   user: User!
   orderDateTime: DateTime
-
 }
 
+#ORDERBOOK DATAMODEL : SINGLE ORDER BOOK
+type OrderBook {
+  id: ID! @unique
+  title: String!
+  author: String!
+  publisher: String!
+  image: String!
+  price: Float
+  quantity: Int! @default(value:1)
+  user: User
+}
+
+#POSTALCODE DATAMODEL
 type PostalCode {
   id: ID! @unique
   code: String! @unique
-
 }
 
 

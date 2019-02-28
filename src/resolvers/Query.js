@@ -1,8 +1,10 @@
 const {forwardTo} = require('prisma-binding');
 
 const Query = {
+
+    //GET ALL BOOKS QUERY
     async getAllBooks(parent,args,ctx,info){
-        return await ctx.db.query.products({
+        return await ctx.db.query.books({
             where : {active:true}
         },`{
             id
@@ -22,13 +24,12 @@ const Query = {
                 src
             }
             mrp
-           
             sku
         }`);
         
     },
 
-    product: forwardTo('db'),
+    book: forwardTo('db'),
     order: forwardTo('db'),
     me(parent,args,ctx,info){
         if(!ctx.request.userId){
@@ -44,13 +45,16 @@ const Query = {
             cart {
                 id 
                 quantity 
-                product {
+                book {
                     id
                     title
                     author
-                    publisher
+                    publisher{
+                        name
+                        discount
+                    }
                     mrp 
-                    discount
+                    
                     images {
                         src
                     }
@@ -60,7 +64,7 @@ const Query = {
     },
 
     async getBooksByCategory(parent,args,ctx,info){
-        return await ctx.db.query.products({
+        return await ctx.db.query.books({
             where: {className: args.className}
         },info);
     },
@@ -79,15 +83,15 @@ const Query = {
     },
 
     async getCategories(parent,args,ctx,info){
-        return await ctx.db.query.productCategories();
+        return await ctx.db.query.categories({},info);
     },
 
     async getTypes(parent,args,ctx,info){
-        return await ctx.db.query.productTypes();
+        return await ctx.db.query.types({},info);
     },
 
     async getPublishers(parent,args,ctx,info){
-        return await ctx.db.query.publishers();
+        return await ctx.db.query.publishers({},info);
     }
 
 }
